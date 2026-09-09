@@ -7,9 +7,12 @@
     "scheme": "taken",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/images/icon.png",
-    "platforms": ["android"],
+    "platforms": [
+      "android"
+    ],
     "android": {
       "package": "com.taken.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#1E6F5C",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -34,6 +37,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "399b58c4-1142-4f7e-802f-bdc94b9b9a22"
+      }
+    },
+    "owner": "timostrijbis"
   }
 }
