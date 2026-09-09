@@ -10,6 +10,11 @@ import * as SQLite from 'expo-sqlite';
  */
 const db = SQLite.openDatabaseSync('taken.db');
 
+// SQLite ships with foreign keys switched *off* for backwards compatibility,
+// and the setting is per-connection. Without this, deleting a chore would
+// silently orphan its completion rows instead of cascading.
+db.execSync('PRAGMA foreign_keys = ON');
+
 /**
  * Migrations.
  *
@@ -36,6 +41,46 @@ const MIGRATIONS: { version: number; up: (database: SQLite.SQLiteDatabase) => vo
           checked     INTEGER NOT NULL DEFAULT 0,
           sort_order  REAL NOT NULL,
           checked_at  INTEGER
+        );
+      `);
+    },
+  },
+  {
+    version: 2,
+    up: (database) => {
+      // Chores and their completion history (CLAUDE.md section 4).
+      //
+      // next_due is deliberately NOT a column: it is always derived as
+      // last_completed_at + interval_days * 86400000, so an interval edit
+      // applies retroactively and nothing overdue can hide.
+      database.execSync(`
+        CREATE TABLE IF NOT EXISTS chores (
+          id                TEXT PRIMARY KEY NOT NULL,
+          name              TEXT NOT NULL,
+          icon              TEXT NOT NULL,
+          color             TEXT NOT NULL,
+          interval_days     INTEGER NOT NULL,
+          sound_key         TEXT NOT NULL,
+          last_completed_at INTEGER,
+          created_at        INTEGER NOT NULL,
+          sort_order        INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS completions (
+          id           TEXT PRIMARY KEY NOT NULL,
+          chore_id     TEXT NOT NULL,
+          completed_at INTEGER NOT NULL,
+          FOREIGN KEY (chore_id) REFERENCES chores (id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS completions_by_chore
+          ON completions (chore_id, completed_at);
+
+        -- Small key/value scratchpad for facts about the install itself,
+        -- such as whether the starter chores have already been seeded.
+        CREATE TABLE IF NOT EXISTS app_state (
+          key   TEXT PRIMARY KEY NOT NULL,
+          value TEXT NOT NULL
         );
       `);
     },

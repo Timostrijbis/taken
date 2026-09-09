@@ -1,8 +1,9 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Toast, useToast } from '@/components/toast';
 import { Fonts } from '@/constants/theme';
 import { useTheme } from '@/constants/use-theme';
 import { AddItemRow } from '@/features/groceries/components/add-item-row';
@@ -23,19 +24,7 @@ export default function GroceriesScreen() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [checkedOpen, setCheckedOpen] = useState(false);
-  const [toast, setToast] = useState('');
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const showToast = useCallback((message: string) => {
-    setToast(message);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(''), 2600);
-  }, []);
-
-  // Clear the pending timer if the screen goes away mid-toast.
-  useEffect(() => () => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-  }, []);
+  const toast = useToast();
 
   const toggle = useCallback(
     (id: string) => {
@@ -84,11 +73,7 @@ export default function GroceriesScreen() {
         />
       </ScrollView>
 
-      {toast !== '' && (
-        <View style={[styles.toast, { backgroundColor: colors.toastBg }]}>
-          <Text style={[styles.toastText, { color: colors.toastInk }]}>{toast}</Text>
-        </View>
-      )}
+      <Toast message={toast.message} />
 
       {menuOpen && (
         <Pressable
@@ -104,9 +89,9 @@ export default function GroceriesScreen() {
             <Pressable
               onPress={() => {
                 setMenuOpen(false);
-                if (checkedCount === 0) return showToast('Nothing is ticked');
+                if (checkedCount === 0) return toast.show('Nothing is ticked');
                 groceries.uncheckAll();
-                showToast(`Unchecked ${checkedCount} item${checkedCount === 1 ? '' : 's'}`);
+                toast.show(`Unchecked ${checkedCount} item${checkedCount === 1 ? '' : 's'}`);
               }}
               style={[styles.menuItem, { borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth }]}>
               <Text style={[styles.menuText, { color: colors.ink }]}>Uncheck all items</Text>
@@ -114,9 +99,9 @@ export default function GroceriesScreen() {
             <Pressable
               onPress={() => {
                 setMenuOpen(false);
-                if (checkedCount === 0) return showToast('Nothing is ticked');
+                if (checkedCount === 0) return toast.show('Nothing is ticked');
                 groceries.clearChecked();
-                showToast(`Deleted ${checkedCount} ticked item${checkedCount === 1 ? '' : 's'}`);
+                toast.show(`Deleted ${checkedCount} ticked item${checkedCount === 1 ? '' : 's'}`);
               }}
               style={styles.menuItem}>
               <Text style={[styles.menuText, { color: colors.ink }]}>Delete checked items</Text>
@@ -143,16 +128,6 @@ const styles = StyleSheet.create({
   headerButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 999 },
   list: { flex: 1 },
   listContent: { paddingHorizontal: 10, paddingTop: 6, paddingBottom: 40 },
-  toast: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 24,
-    borderRadius: 999,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-  },
-  toastText: { fontFamily: Fonts.body, fontSize: 13.5 },
   scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(32, 30, 29, 0.28)' },
   menu: {
     position: 'absolute',

@@ -7,14 +7,12 @@ import {
 } from '@expo-google-fonts/figtree';
 import { JetBrainsMono_400Regular } from '@expo-google-fonts/jetbrains-mono';
 import { useFonts } from 'expo-font';
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import { Tabs } from 'expo-router/js-tabs';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { TabBar } from '@/components/tab-bar';
 import { useTheme } from '@/constants/use-theme';
 import { migrate } from '@/db/database';
 
@@ -27,9 +25,13 @@ SplashScreen.preventAutoHideAsync();
 migrate();
 
 /**
- * The root layout. In expo-router the file tree under `src/app` *is* the
- * navigation structure: this file wraps every screen, and each sibling file
- * (`index.tsx`, `groceries.tsx`) becomes one tab.
+ * The root layout: a stack.
+ *
+ * The two tabs live inside it as the `(tabs)` group — parentheses mean the
+ * folder groups files without adding a segment to the URL. Anything outside
+ * that group (the chore detail and add screens) is pushed *over* the tabs as a
+ * full screen, which is why the tab bar disappears on them, matching the
+ * design.
  */
 export default function RootLayout() {
   const { colors, isDark } = useTheme();
@@ -55,17 +57,15 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
       <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
-        <Tabs
-          tabBar={(props) => <TabBar {...props} />}
+        <Stack
           screenOptions={{
-            // Each screen draws its own large title (the design uses a display
-            // serif heading), so the stock navigation header is switched off.
             headerShown: false,
-            sceneStyle: { backgroundColor: colors.bg },
+            contentStyle: { backgroundColor: colors.bg },
           }}>
-          <Tabs.Screen name="index" options={{ title: 'Chores' }} />
-          <Tabs.Screen name="groceries" options={{ title: 'Groceries' }} />
-        </Tabs>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="chore/[id]" />
+          <Stack.Screen name="chore/new" />
+        </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>
   );
