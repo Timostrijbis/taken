@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native build output (we build in the cloud, but just in case)
+android/
+ios/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# EAS
+.easignore
+
+# Local data — must never reach a public repo
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+taken-backup*.json
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.*
+yarn-error.*
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
