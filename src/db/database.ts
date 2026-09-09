@@ -85,6 +85,24 @@ const MIGRATIONS: { version: number; up: (database: SQLite.SQLiteDatabase) => vo
       `);
     },
   },
+  {
+    version: 3,
+    up: (database) => {
+      // app_state was added to migration 2 after that migration had already
+      // run on the development phone, so its database was stamped as
+      // up-to-date without ever creating the table. Re-creating it here is
+      // the correct fix: an installed database is only ever moved forward by
+      // a *new* migration, never by editing an old one. CREATE TABLE IF NOT
+      // EXISTS makes this a no-op on a fresh install, where migration 2
+      // already made the table.
+      database.execSync(`
+        CREATE TABLE IF NOT EXISTS app_state (
+          key   TEXT PRIMARY KEY NOT NULL,
+          value TEXT NOT NULL
+        );
+      `);
+    },
+  },
 ];
 
 /**
