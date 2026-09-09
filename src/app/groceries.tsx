@@ -1,28 +1,167 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Fonts } from '@/constants/theme';
 import { useTheme } from '@/constants/use-theme';
+import { AddItemRow } from '@/features/groceries/components/add-item-row';
+import { CheckedSection } from '@/features/groceries/components/checked-section';
+import { UncheckedList } from '@/features/groceries/components/unchecked-list';
+import { useGroceries } from '@/features/groceries/use-groceries';
 
 /**
- * Screen 2 — Grocery list. This is the first real feature we build
- * (build step 2), because it is the simplest complete one.
+ * Screen 2 — the grocery list (CLAUDE.md section 7). One list, Google Keep
+ * behaviour: type at the top to add, tick to drop an item into the collapsed
+ * ticked section, drag the grip to reorder, and use the overflow menu to
+ * uncheck or delete everything ticked.
  */
 export default function GroceriesScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const groceries = useGroceries();
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [checkedOpen, setCheckedOpen] = useState(false);
+  const [toast, setToast] = useState('');
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(''), 2600);
+  }, []);
+
+  // Clear the pending timer if the screen goes away mid-toast.
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+  }, []);
+
+  const toggle = useCallback(
+    (id: string) => {
+      const item = groceries.items.find((i) => i.id === id);
+      if (!item) return;
+      // Ticking something reveals the ticked section, so the item is visibly
+      // going somewhere rather than just vanishing.
+      if (!item.checked) setCheckedOpen(true);
+      groceries.toggle(id, !item.checked);
+    },
+    [groceries],
+  );
+
+  const checkedCount = groceries.checked.length;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <MaterialCommunityIcons name="cart-outline" size={64} color={colors.accent} />
-      <Text style={[styles.title, { color: colors.text }]}>Groceries</Text>
-      <Text style={[styles.body, { color: colors.textMuted }]}>
-        The checklist lands here in step 2.
-      </Text>
+    <View style={[styles.screen, { backgroundColor: colors.bg, paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.ink }]}>Groceries</Text>
+        <Pressable
+          onPress={() => setMenuOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="List options"
+          style={styles.headerButton}>
+          <MaterialCommunityIcons name="dots-vertical" size={21} color={colors.muted} />
+        </Pressable>
+      </View>
+
+      <AddItemRow onAdd={groceries.add} />
+
+      <ScrollView
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled">
+        <UncheckedList
+          items={groceries.unchecked}
+          onToggle={toggle}
+          onRename={groceries.rename}
+          onReorder={groceries.reorder}
+        />
+        <CheckedSection
+          items={groceries.checked}
+          open={checkedOpen}
+          onToggleOpen={() => setCheckedOpen((v) => !v)}
+          onToggleItem={toggle}
+        />
+      </ScrollView>
+
+      {toast !== '' && (
+        <View style={[styles.toast, { backgroundColor: colors.toastBg }]}>
+          <Text style={[styles.toastText, { color: colors.toastInk }]}>{toast}</Text>
+        </View>
+      )}
+
+      {menuOpen && (
+        <Pressable
+          style={styles.scrim}
+          accessibilityRole="button"
+          accessibilityLabel="Close menu"
+          onPress={() => setMenuOpen(false)}>
+          <View
+            style={[
+              styles.menu,
+              { top: insets.top + 58, backgroundColor: colors.card, borderColor: colors.line },
+            ]}>
+            <Pressable
+              onPress={() => {
+                setMenuOpen(false);
+                if (checkedCount === 0) return showToast('Nothing is ticked');
+                groceries.uncheckAll();
+                showToast(`Unchecked ${checkedCount} item${checkedCount === 1 ? '' : 's'}`);
+              }}
+              style={[styles.menuItem, { borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth }]}>
+              <Text style={[styles.menuText, { color: colors.ink }]}>Uncheck all items</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                setMenuOpen(false);
+                if (checkedCount === 0) return showToast('Nothing is ticked');
+                groceries.clearChecked();
+                showToast(`Deleted ${checkedCount} ticked item${checkedCount === 1 ? '' : 's'}`);
+              }}
+              style={styles.menuItem}>
+              <Text style={[styles.menuText, { color: colors.ink }]}>Delete checked items</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  title: { fontSize: 28, fontWeight: '600' },
-  body: { fontSize: 15, textAlign: 'center', paddingHorizontal: 32 },
+  screen: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    paddingLeft: 22,
+    paddingRight: 8,
+    paddingTop: 14,
+    paddingBottom: 6,
+  },
+  title: { fontFamily: Fonts.display, fontSize: 32, lineHeight: 38 },
+  headerButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 999 },
+  list: { flex: 1 },
+  listContent: { paddingHorizontal: 10, paddingTop: 6, paddingBottom: 40 },
+  toast: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 24,
+    borderRadius: 999,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  toastText: { fontFamily: Fonts.body, fontSize: 13.5 },
+  scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(32, 30, 29, 0.28)' },
+  menu: {
+    position: 'absolute',
+    right: 14,
+    width: 226,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  menuItem: { paddingVertical: 15, paddingHorizontal: 18 },
+  menuText: { fontFamily: Fonts.bodyMedium, fontSize: 15 },
 });
