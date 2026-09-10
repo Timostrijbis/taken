@@ -11,10 +11,14 @@ export const DAY_MS = 86_400_000;
  * retroactive: change the interval and the due date moves immediately, so a
  * chore that is already overdue cannot be hidden by editing it.
  *
- * A chore that has never been completed is due immediately.
+ * A chore that has never been completed counts from when it was *created*, so
+ * a new 7-day chore is first due seven days later rather than instantly. The
+ * anchor has to be a fixed point in the past: an earlier version used
+ * `now - DAY_MS`, which is recomputed on every render and reconcile, so the
+ * due date slid forward continuously and the chore never actually came due.
  */
 export function nextDueAt(chore: Chore, now: number): number {
-  const base = chore.lastCompletedAt ?? now - DAY_MS;
+  const base = chore.lastCompletedAt ?? chore.createdAt;
   return base + chore.intervalDays * DAY_MS;
 }
 

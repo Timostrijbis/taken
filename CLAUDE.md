@@ -79,10 +79,24 @@ grocery_items
 `next_due` is **never stored**. It is always derived:
 
 ```
-next_due = last_completed_at + interval_days * 86400000
+next_due = (last_completed_at ?? created_at) + interval_days * 86400000
 ```
 
-A chore that has never been completed is due immediately.
+A chore that has **never been completed counts from when it was created**, so a
+new 7-day chore is first due seven days after it was added, not immediately. A
+fresh install therefore opens on six calm cards that come due over the
+following fortnight, rather than six red ones.
+
+This was chosen over "due immediately" deliberately. Because v1 sends **one
+notification per due date and then goes silent**, a seeded chore that starts
+life already overdue would never produce a notification at all — its due date is
+in the past, so there is nothing left to schedule — and the app's first
+impression would be six red cards and no sound.
+
+The anchor must be a **fixed point in the past**, never one derived from the
+current time. Anchoring to `now` in any form recomputes on every render and
+every reconcile, which slides the due date forward continuously so the chore
+never comes due.
 
 Keep a **complete completion history**. Nothing displays it in v1 — streaks and
 heat-maps become possible later precisely because the rows exist from day one.
