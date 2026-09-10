@@ -1,6 +1,8 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 
+import { reconcileInBackground } from '@/features/notifications/scheduler';
+
 import * as repo from './repository';
 import type { Chore } from './types';
 
@@ -34,6 +36,9 @@ export function useChores() {
     (id: string) => {
       repo.markDone(id);
       refresh();
+      // The completion moved this chore's next due date, so its pending
+      // notification is now wrong. Rebuild the schedule from the rows.
+      reconcileInBackground();
     },
     [refresh],
   );

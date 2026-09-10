@@ -15,6 +15,7 @@ import { Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useTheme } from '@/constants/use-theme';
+import { reconcile, requestPermission } from '@/features/notifications/scheduler';
 import { migrate } from '@/db/database';
 
 // Hold the splash screen until the fonts are ready, so the first frame the user
@@ -72,6 +73,20 @@ export default function RootLayout() {
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
   }, [ready]);
+
+  // Reconcile once per app launch (CLAUDE.md section 5). Android's alarms can
+  // drift out of step with the database after a time-zone change, an app
+  // update or an OS-level cleanup, and a wrong pending alarm is invisible
+  // until it fires at the wrong moment — so the schedule is rebuilt from the
+  // rows every time the app starts.
+  //
+  // The permission prompt rides along here because it has to precede any
+  // scheduling: without permission there is nothing to post to.
+  useEffect(() => {
+    requestPermission()
+      .then(() => reconcile())
+      .catch((error) => console.error('[taken] startup reconcile failed', error));
+  }, []);
 
   if (migrationError) return <StartupError message={migrationError} />;
 

@@ -17,6 +17,7 @@ import {
 import { CHORE_COLORS, CHORE_SOUNDS, glyphFor } from '@/features/chores/constants';
 import { washFor } from '@/features/chores/due';
 import * as repo from '@/features/chores/repository';
+import { reconcileInBackground } from '@/features/notifications/scheduler';
 
 /**
  * The add-chore screen (CLAUDE.md section 6).
@@ -42,6 +43,7 @@ export default function NewChoreScreen() {
       return;
     }
     repo.createChore({ name, icon, color, intervalDays, soundKey });
+    reconcileInBackground();
     router.back();
   };
 

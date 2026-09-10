@@ -18,6 +18,7 @@ import {
 import { glyphFor } from '@/features/chores/constants';
 import { historyLabel, longLabel, urgencyOf, washFor } from '@/features/chores/due';
 import * as repo from '@/features/chores/repository';
+import { reconcileInBackground } from '@/features/notifications/scheduler';
 import { useChore } from '@/features/chores/use-chores';
 
 /**
@@ -49,6 +50,8 @@ export default function ChoreDetailScreen() {
 
   const patch = (fields: Parameters<typeof repo.updateChore>[1]) => {
     repo.updateChore(chore.id, fields);
+    // An interval, sound or name change all alter what should be scheduled.
+    reconcileInBackground();
     refresh();
   };
 
@@ -80,6 +83,7 @@ export default function ChoreDetailScreen() {
           <Pressable
             onPress={() => {
               repo.markDone(chore.id);
+              reconcileInBackground();
               refresh();
               router.back();
             }}
@@ -168,6 +172,7 @@ export default function ChoreDetailScreen() {
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() => {
           repo.deleteChore(chore.id);
+          reconcileInBackground();
           setConfirmOpen(false);
           router.back();
         }}
