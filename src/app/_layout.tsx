@@ -11,6 +11,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useTheme } from '@/constants/use-theme';
@@ -22,7 +23,18 @@ SplashScreen.preventAutoHideAsync();
 
 // Bring the database up to the current schema before any screen reads from it.
 // This runs once, at import time, on the very first launch of the app process.
-migrate();
+//
+// It is wrapped because this code runs *outside* React: if it threw here, the
+// whole module would fail to load and the app would show a blank white screen
+// with no clue as to why. Instead we remember the message and render it below,
+// so a broken migration is something you can read off the phone.
+let migrationError: string | null = null;
+try {
+  migrate();
+} catch (error) {
+  migrationError = error instanceof Error ? error.message : String(error);
+  console.error('[taken] migration failed', error);
+}
 
 /**
  * The root layout: a stack.
@@ -36,7 +48,10 @@ migrate();
 export default function RootLayout() {
   const { colors, isDark } = useTheme();
 
-  const [fontsLoaded] = useFonts({
+  // The second value is the *error* slot. Without reading it, a font that
+  // fails to load leaves `fontsLoaded` false forever and the screen below
+  // stays blank permanently — the app would look frozen with nothing logged.
+  const [fontsLoaded, fontError] = useFonts({
     Caprasimo_400Regular,
     Figtree_400Regular,
     Figtree_500Medium,
@@ -45,11 +60,22 @@ export default function RootLayout() {
     JetBrainsMono_400Regular,
   });
 
-  useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync();
-  }, [fontsLoaded]);
+  // Ready means "stop waiting", not "everything worked". If a font failed we
+  // carry on and Android substitutes its own face: wrong typography beats no
+  // app at all.
+  const ready = fontsLoaded || !!fontError;
 
-  if (!fontsLoaded) return null;
+  useEffect(() => {
+    if (fontError) console.error('[taken] font loading failed', fontError);
+  }, [fontError]);
+
+  useEffect(() => {
+    if (ready) SplashScreen.hideAsync();
+  }, [ready]);
+
+  if (migrationError) return <StartupError message={migrationError} />;
+
+  if (!ready) return null;
 
   return (
     // GestureHandlerRootView must sit at the very top of the tree for
@@ -68,5 +94,26 @@ export default function RootLayout() {
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>
+  );
+}
+
+/**
+ * The last-resort screen. Shown when the database could not be brought up to
+ * date, which is the one failure that happens before React can render anything
+ * useful. Plain inline styles and no custom fonts on purpose — this has to work
+ * when the rest of the app does not.
+ */
+function StartupError({ message }: { message: string }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: '#f5ead8', padding: 28, justifyContent: 'center' }}>
+      <Text style={{ fontSize: 20, fontWeight: '700', color: '#201e1d', marginBottom: 12 }}>
+        taken could not start
+      </Text>
+      <Text style={{ fontSize: 14, color: '#645c50', marginBottom: 18 }}>
+        The database could not be upgraded. Reinstalling the app clears its data
+        and starts fresh.
+      </Text>
+      <Text style={{ fontSize: 13, color: '#a4372a' }}>{message}</Text>
+    </View>
   );
 }
