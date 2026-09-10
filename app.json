@@ -26,6 +26,18 @@
       "expo-sqlite",
       "expo-sharing",
       [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/chime.wav",
+            "./assets/sounds/ping.wav",
+            "./assets/sounds/pebble.wav",
+            "./assets/sounds/rise.wav",
+            "./assets/sounds/nudge.wav"
+          ]
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#1E6F5C",

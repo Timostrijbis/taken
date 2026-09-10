@@ -1,3 +1,4 @@
+import { soundLabel } from './constants';
 import type { Chore, Urgency } from './types';
 
 export const DAY_MS = 86_400_000;
@@ -55,7 +56,7 @@ export function historyLabel(chore: Chore, now: number): string {
     chore.lastCompletedAt === null
       ? 'never done'
       : `last done ${Math.round((now - chore.lastCompletedAt) / DAY_MS)}d ago`;
-  return `${last} · ${chore.completionCount} in history · ${chore.soundKey.toLowerCase()}`;
+  return `${last} · ${chore.completionCount} in history · ${soundLabel(chore.soundKey).toLowerCase()}`;
 }
 
 /**

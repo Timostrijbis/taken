@@ -103,6 +103,32 @@ const MIGRATIONS: { version: number; up: (database: SQLite.SQLiteDatabase) => vo
       `);
     },
   },
+  {
+    version: 4,
+    up: (database) => {
+      // The first six sounds were placeholder *labels* ('Chime', 'Marimba',
+      // 'Kettle') chosen before any audio existed, and they were written
+      // straight into chores.sound_key. Now that real files are bundled, the
+      // column holds a stable lowercase key instead, which doubles as the
+      // Android notification channel id.
+      //
+      // Chores already on the phone still hold the old labels, so they are
+      // remapped here. Anything unrecognised falls back to 'chime' rather
+      // than being left pointing at a channel that will never exist.
+      database.execSync(`
+        UPDATE chores SET sound_key = CASE sound_key
+          WHEN 'Chime'   THEN 'chime'
+          WHEN 'Marimba' THEN 'ping'
+          WHEN 'Pebble'  THEN 'pebble'
+          WHEN 'Bell'    THEN 'rise'
+          WHEN 'Kettle'  THEN 'nudge'
+          WHEN 'Silent'  THEN 'silent'
+          ELSE 'chime'
+        END
+        WHERE sound_key NOT IN ('chime', 'ping', 'pebble', 'rise', 'nudge', 'silent');
+      `);
+    },
+  },
 ];
 
 /**

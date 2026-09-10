@@ -84,11 +84,11 @@ export function SoundPicker({ value, onChange }: { value: string; onChange: (s: 
   return (
     <View style={styles.chipRow}>
       {CHORE_SOUNDS.map((sound) => {
-        const selected = sound === value;
+        const selected = sound.key === value;
         return (
           <Pressable
-            key={sound}
-            onPress={() => onChange(sound)}
+            key={sound.key}
+            onPress={() => onChange(sound.key)}
             accessibilityRole="button"
             accessibilityState={{ selected }}
             style={[
@@ -99,7 +99,7 @@ export function SoundPicker({ value, onChange }: { value: string; onChange: (s: 
               },
             ]}>
             <Text style={[styles.chipText, { color: selected ? colors.accentInk : colors.ink }]}>
-              {sound}
+              {sound.label}
             </Text>
           </Pressable>
         );

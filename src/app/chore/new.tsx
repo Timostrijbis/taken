@@ -34,7 +34,7 @@ export default function NewChoreScreen() {
   const [icon, setIcon] = useState('leaf');
   const [color, setColor] = useState(CHORE_COLORS[0]);
   const [intervalDays, setIntervalDays] = useState(7);
-  const [soundKey, setSoundKey] = useState(CHORE_SOUNDS[0]);
+  const [soundKey, setSoundKey] = useState(CHORE_SOUNDS[0].key);
 
   const save = () => {
     if (!name.trim()) {
