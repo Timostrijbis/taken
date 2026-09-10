@@ -104,13 +104,22 @@ heat-maps become possible later precisely because the rows exist from day one.
 ## 5. Scheduling & notifications
 
 **Design rule: the database is the truth; scheduled notifications are a
-disposable projection of it.** Android's alarm scheduling does not survive a
-reboot (expo/expo#4121), and time-zone changes, app updates and OS quirks can
-all desynchronise it. Therefore:
+disposable projection of it.** Time-zone changes, OS quirks and our own bugs
+can all desynchronise the pending alarms from the rows, and a wrong pending
+alarm is invisible until the moment it fires. So the schedule is never patched
+in place — it is thrown away and rebuilt. Therefore:
 
-- **Reconcile on every app launch, after every completion or chore edit, and on
-  device boot**: cancel all pending notifications, recompute from the DB,
+- **Reconcile on every app launch and after every completion, edit, create or
+  delete**: cancel all pending notifications, recompute from the DB,
   reschedule.
+- **Boot and app-update are handled by the library, not by us.**
+  `expo-notifications` declares `RECEIVE_BOOT_COMPLETED` and registers a
+  receiver for `BOOT_COMPLETED`, `REBOOT`, `QUICKBOOT_POWERON` and
+  `MY_PACKAGE_REPLACED`, restoring scheduled notifications after a restart or
+  an app update. (An earlier version of this file claimed alarms are lost on
+  reboot, citing expo/expo#4121; that has since been fixed upstream — verified
+  in the package's own AndroidManifest.) Reconcile-on-launch remains the safety
+  net, because it costs nothing and does not depend on that continuing to hold.
 - Schedule **one occurrence ahead per chore**. Never a year of them.
 - Use **inexact** alarms. No `SCHEDULE_EXACT_ALARM` permission is requested — a
   reminder arriving at 09:20 instead of 09:00 is not a defect, and a lean
@@ -118,6 +127,11 @@ all desynchronise it. Therefore:
 - The README must tell the user to grant the app a **battery-optimisation
   exemption**, or notifications can be delayed indefinitely while the phone is
   idle.
+- `expo-notifications` also declares an **FCM messaging service** in its
+  manifest. It is inert here: nothing registers for a push token, there is no
+  `google-services.json`, and GrapheneOS has no Play Services to deliver
+  through. The "no FCM, ever" constraint in section 2 stands — the declaration
+  is the library's, not a push path we use.
 
 **Timing model: pure interval arithmetic.** Completing a chore at 23:40 with a
 3-day interval means the next notification fires at 23:40 three days later. The
@@ -127,6 +141,15 @@ chosen knowingly, over a fixed daily reminder hour.
 **Overdue behaviour: one notification per due date, then silence.** No daily
 re-nagging and no snooze in v1. The home-screen card turning red is the ongoing
 signal.
+
+A consequence worth stating plainly, because it looks like a bug otherwise:
+**reconcile schedules nothing for a chore that is already overdue.** Its moment
+has passed, and re-scheduling it would post a notification on every app launch,
+which is precisely the re-nagging ruled out above.
+
+**A chore set to "Silent" gets no scheduled notification at all**, only its
+channel. Waking the device to post something that makes no sound and does not
+vibrate has no value; such a chore is a purely visual reminder on the grid.
 
 **Sounds.** On Android 8+ the sound belongs to the *notification channel*, and
 channels are **immutable once created**. So: bundle ~5 sound files at build time
